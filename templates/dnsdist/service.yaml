@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-dnsdist
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.services.dnsdist.type }}
+  ports:
+    - port: {{ .Values.services.dnsdist.port }}
+      targetPort: dns-tcp
+      protocol: TCP
+      name: dns-tcp
+    - port: {{ .Values.services.dnsdist.port }}
+      targetPort: dns-udp
+      protocol: UDP
+      name: dns-udp
+   # {{- if .Values.powerdns.dnsdist.webserver.enabled }}
+   # - port: {{ .Values.services.dnsdist.apiPort }}
+   #   targetPort: http
+   #   protocol: TCP
+   #   name: http
+   # {{- end }}
+  selector:
+    {{- include "powerdns.selectorLabels" . | nindent 4 }}
+    module: dnsdist

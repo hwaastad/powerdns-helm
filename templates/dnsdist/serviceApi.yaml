@@ -1,0 +1,21 @@
+{{- if .Values.powerdns.dnsdist.webserver.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-dnsdist-api
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: dnsdist-api
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.services.dnsdist.apiPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "powerdns.selectorLabels" . | nindent 4 }}
+    module: dnsdist
+{{- end }}

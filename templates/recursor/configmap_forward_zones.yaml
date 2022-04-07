@@ -1,0 +1,13 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  annotations:
+    "helm.sh/resource-policy": keep
+  name: {{ include "powerdns.fullname" . }}-recursor-forward-zones
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+data:
+  forward_zones: |
+    {{- range $key, $value := .Values.powerdns.recursor.forwardZones }}
+    {{ $value }}={{ $.Values.services.auth.clusterIP }}:{{ $.Values.services.auth.port }}
+    {{- end }}

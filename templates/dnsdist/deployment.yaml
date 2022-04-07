@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    email: helge.waastad@telenor.no
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-dnsdist
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: dnsdist
+spec:
+  replicas: {{ .Values.replicaCount.dnsdist }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: dnsdist
+  template:
+    metadata:
+      {{- with .Values.podAnnotations.dnsdist }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "powerdns.selectorLabels" . | nindent 8 }}
+        module: dnsdist
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "powerdns.dnsdist.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext.dnsdist | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext.dnsdist | nindent 12 }}
+          image: "{{ .Values.images.dnsdist.repository }}:{{ .Values.images.dnsdist.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.images.dnsdist.pullPolicy }}
+          ports:
+            - name: dns-tcp
+              containerPort: {{ .Values.powerdns.dnsdist.localPort }}
+              protocol: TCP
+            - name: dns-udp
+              containerPort: {{ .Values.powerdns.dnsdist.localPort }}
+              protocol: UDP
+            {{- if .Values.powerdns.dnsdist.webserver.enabled }}
+            - name: http
+              containerPort: {{ .Values.powerdns.dnsdist.webserver.port }}
+              protocol: TCP
+            {{- end }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/dnsdist/conf.d/
+            #- name: var-run
+            #  mountPath: /var/run/pdns/
+          resources:
+            {{- toYaml .Values.resources.dnsdist | nindent 12 }}
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "powerdns.fullname" . }}-dnsdist
+      - name: var-run
+        emptyDir: {}
+      {{- with .Values.nodeSelector.dnsdist }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity.dnsdist }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.dnsdist }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

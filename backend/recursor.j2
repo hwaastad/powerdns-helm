@@ -1,0 +1,11 @@
+api-key={{ .Values.powerdns.recursor.apiKey}}
+api-key={{ .Values.powerdns.recursor.apiKey }}
+webserver={{ .Values.powerdns.recursor.webserver.enabled }}
+webserver-address={{ .Values.powerdns.recursor.webserver.address }}
+webserver-port={{ .Values.powerdns.recursor.webserver.port }}
+webserver-allow-from={{ .Values.powerdns.recursor.webserver.allowFrom }}
+allow-from={{ .Values.powerdns.recursor.webserver.allowFrom }}
+loglevel={{ .Values.powerdns.recursor.log.logLevel }}
+local-port={{ .Values.powerdns.recursor.localPort }}
+local-address={{ .Values.powerdns.recursor.localAddress }}:{{ .Values.powerdns.recursor.localPort }}
+forward-zones-file=/etc/powerdns/forward_zones

@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    email: helge.waastad@telenor.no
+    ignore-check.kube-linter.io/use-namespace: ""
+    checksum/config: {{ include (print $.Template.BasePath "/recursor/configmap_forward_zones.yaml") . | sha256sum }}
+  name: {{ include "powerdns.fullname" . }}-recursor
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: recursor
+spec:
+  replicas: {{ .Values.replicaCount.recursor }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: recursor
+  template:
+    metadata:
+      {{- with .Values.podAnnotations.recursor }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "powerdns.selectorLabels" . | nindent 8 }}
+        module: recursor
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "powerdns.recursor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext.recursor | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext.recursor | nindent 12 }}
+          image: "{{ .Values.images.recursor.repository }}:{{ .Values.images.recursor.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.images.recursor.pullPolicy }}
+          args:
+            - --config-dir=/etc/powerdns/recursor.d
+          env:
+            - name: TEMPLATE_FILES
+              value: recursor
+          ports:
+            - name: dns-tcp
+              containerPort: {{ .Values.powerdns.recursor.localPort }}
+              protocol: TCP
+            - name: dns-udp
+              containerPort: {{ .Values.powerdns.recursor.localPort }}
+              protocol: UDP
+            - name: http
+              containerPort: {{ .Values.powerdns.recursor.webserver.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/powerdns/templates.d/
+            - name: forward-zones
+              mountPath: /etc/powerdns/forward_zones
+              subPath: forward_zones
+            - name: var-run
+              mountPath: /var/run/pdns-recursor/
+            - name: var-run
+              mountPath: /etc/powerdns/recursor.d/
+            #- name: sqlite
+            #  mountPath: /opt/powerdns
+          resources:
+            {{- toYaml .Values.resources.recursor | nindent 12 }}
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "powerdns.fullname" . }}-recursor
+      - name: forward-zones
+        configMap:
+          name: {{ include "powerdns.fullname" . }}-recursor-forward-zones
+          items:
+          - key: forward_zones
+            path: forward_zones
+      - name: var-run
+        emptyDir: {}
+      #- name: sqlite
+      #  emptyDir: {}
+      {{- with .Values.nodeSelector.recursor }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity.recursor }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.recursor }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

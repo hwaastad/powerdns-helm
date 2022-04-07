@@ -1,0 +1,92 @@
+{{- if .Values.powerdns.admin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    email: helge.waastad@telenor.no
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-admin
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: admin
+spec:
+  replicas: {{ .Values.replicaCount.admin }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: admin
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations.admin }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "powerdns.selectorLabels" . | nindent 8 }}
+        module: admin
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "powerdns.admin.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext.admin | nindent 8 }}
+      {{- if eq .Values.powerdns.backend "mysql" }}
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.31
+          command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z {{ include "powerdns.databaseHost" . }} 3306; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext.admin | nindent 12 }}
+          image: "{{ .Values.images.admin.repository }}:{{ .Values.images.admin.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.images.admin.pullPolicy }}
+          env:
+            - name: GUINCORN_TIMEOUT
+              value: "60"
+            - name: GUNICORN_WORKERS
+              value: "2"
+            - name: SQLALCHEMY_DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "powerdns.fullname" . }}
+                  key: admin_db_url 
+          ports:
+            - name: http
+              containerPort: {{ .Values.powerdns.admin.listenPort }}
+              protocol: TCP
+          {{- if eq .Values.powerdns.backend "sqlite3" }}
+          volumeMounts:
+            - name: data-volume
+              mountPath: /opt/powerdns/
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources.admin| nindent 12 }}
+      {{- if eq .Values.powerdns.backend "sqlite3" }}
+      volumes:
+      - name: data-volume
+        {{- if .Values.powerdns.admin.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "powerdns.fullname" . }}-admin
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector.admin }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity.admin }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.admin }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

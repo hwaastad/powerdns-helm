@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    email: helge.waastad@telenor.no
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-auth
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: auth
+spec:
+  replicas: {{ .Values.replicaCount.auth }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: auth
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations.auth }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "powerdns.selectorLabels" . | nindent 8 }}
+        module: auth
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "powerdns.auth.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext.auth | nindent 8 }}
+      initContainers:
+        - name: {{ .Chart.Name }}-initdb
+          {{- if eq .Values.powerdns.backend "sqlite3" }}
+          image: "{{ .Values.images.auth.repository }}:{{ .Values.images.auth.tag | default .Chart.AppVersion }}"
+          command: ["/bin/sh", "-c"]
+          args:
+          - '[ ! -f /opt/powerdns/pdns.sqlite3 ] && cp /var/lib/powerdns/pdns.sqlite3 /opt/powerdns/ || echo "DB initialized already"'
+          volumeMounts:
+            - name: data-volume
+              mountPath: /opt/powerdns
+          {{- else }}
+          image: busybox:1.31
+          command: ['sh', '-c', 'echo -e "Checking for the availability of MySQL Server deployment"; while ! nc -z {{ include "powerdns.databaseHost" . }} 3306; do sleep 1; printf "-"; done; echo -e "  >> MySQL DB Server has started";']
+          {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext.auth | nindent 12 }}
+          image: "{{ .Values.images.auth.repository }}:{{ .Values.images.auth.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.images.auth.pullPolicy }}
+          args:
+            - --config-dir=/etc/powerdns/pdns.d/
+          env:
+            - name: TEMPLATE_FILES
+              value: pdns
+          ports:
+            - name: dns-tcp
+              containerPort: {{ .Values.powerdns.auth.localPort }}
+              protocol: TCP
+            - name: dns-udp
+              containerPort: {{ .Values.powerdns.auth.localPort }}
+              protocol: UDP
+            - name: http
+              containerPort: {{ .Values.powerdns.auth.webserver.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/powerdns/templates.d/
+            - name: var-run
+              mountPath: /var/run/pdns/
+            - name: var-run
+              mountPath: /etc/powerdns/pdns.d
+            {{- if eq .Values.powerdns.backend "sqlite3" }}
+            - name: data-volume
+              mountPath: /opt/powerdns
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources.auth | nindent 12 }}
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "powerdns.fullname" . }}-auth
+      - name: var-run
+        emptyDir: {}
+      - name: data-volume
+        {{- if .Values.powerdns.auth.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "powerdns.fullname" . }}-auth
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector.auth }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity.auth }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations.auth }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,249 @@
+# Default values for powerdns.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount:
+  admin: 1
+  auth: 1
+  dnsdist: 1
+  recursor: 1
+
+images:
+  auth:
+    repository: powerdns/pdns-auth-46
+    tag:
+    pullPolicy: IfNotPresent
+  recursor:
+    repository: powerdns/pdns-recursor-46
+    tag:
+    pullPolicy: IfNotPresent
+  dnsdist:
+    repository: powerdns/dnsdist-17
+    tag: "1.7.0"
+    pullPolicy: IfNotPresent
+  admin:
+    repository: ngoduykhanh/powerdns-admin
+    tag: latest
+    pullPolicy: Always
+
+powerdns:
+  enabled: true
+  # options mysql, sqlite3
+  backend: mysql
+  auth:
+    unauthNotify: yes # no
+    dnsUpdate: no #yes
+    log:
+      logLevel: 4
+      logDnsQueries: no # or yes
+    serviceMonitor:
+      enabled: true
+    api: yes
+    apiKey: some-key
+    webserver:
+      enabled: yes #no
+      address: 0.0.0.0
+      port: 8081
+      allowFrom: 0.0.0.0/0
+    localAddress: 0.0.0.0
+    localPort: 5300
+    allowAxfrIps: 192.168.10.38/32,192.168.10.104/32,192.168.10.221/32,172.30.1.0/24
+    master: true
+    persistence:
+      enabled: true
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+      hostPath: ""
+      existingClaim: ""
+  recursor:
+    log:
+      logLevel: 6
+    serviceMonitor:
+      enabled: true
+    enabled: true
+    api: yes
+    apiKey: a-key
+    webserver:
+      enabled: yes #no
+      address: 0.0.0.0
+      port: 8081
+      allowFrom: 0.0.0.0/0
+    localPort: 5300
+    localAddress: 0.0.0.0
+    allowFrom: 127.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 169.254.0.0/16, 192.168.10.0/24, 172.16.0.0/12, 10.20.30.0/24, 172.30.1.0/24
+    forwardZones:
+      - blabla.net
+  dnsdist:
+    serviceMonitor:
+      enabled: true
+    enabled: true
+    localPort: 5300
+    localAddress: 0.0.0.0
+    apiKey: supersecretAPIkey #sha hash?
+    control:
+      enabled: false
+      key: supersecretAPIkey
+      listenAddress: 127.0.0.1
+      port: 5199
+    webserver:
+      enabled: true #no
+      username: xxx
+      password: secret-password
+      listenAddress: 127.0.0.1
+      port: 8083
+      allowFrom: 0.0.0.0/0
+  admin:
+    enabled: true
+    listenPort: 80
+    persistence:
+      enabled: true
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+      hostPath: ""
+      existingClaim: ""
+    ingress:
+      enabled: true
+      ingressClassName: haproxy
+      pathType: ImplementationSpecific
+      path: /
+      hostname: sslip.io
+      annotations:
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+mariadb:
+  enabled: true
+  architecture: standalone
+  auth:
+    rootPassword: "mysql-root"
+    username: powerdnsuser
+    password: powerpassword
+    database: powerdns
+  primary:
+    persistence:
+      enabled: true
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+      hostPath: ""
+      existingClaim: ""
+  initdbScriptsConfigMap: mariadb-init-db
+
+externalDatabase:
+  host: ""
+  port: 3306
+  user: powerdnsuser
+  password: ""
+  database: some_database
+
+serviceAccount:
+  auth:
+    create: true
+    annotations: {}
+    name: ""
+  recursor:
+    create: true
+    annotations: {}
+    name: ""
+  dnsdist:
+    create: true
+    annotations: {}
+    name: ""
+  admin:
+    create: true
+    annotations: {}
+    name: ""
+
+podAnnotations:
+  admin: {}
+  auth: {}
+  dnsdist: {}
+  recursor: {}
+
+podSecurityContext:
+  auth:
+    fsGroup: 953
+  admin:
+    fsGroup: 101
+
+securityContext:
+  auth:
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 953
+  recursor:
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 953
+  dnsdist:
+    runAsUser: 953
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+  admin:
+    runAsUser: 100
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+services:
+  auth:
+    type: ClusterIP
+    port: 5300
+    clusterIP: 10.43.100.100
+    apiPort: 8080
+  recursor:
+    type: ClusterIP
+    port: 5300
+    clusterIP: 10.43.100.101
+    apiPort: 8080
+  dnsdist:
+    type: LoadBalancer
+    port: 53
+    apiPort: 8080
+  admin:
+    type: ClusterIP
+    port: 80
+
+nodeSelector:
+  admin: {}
+  auth: {}
+  dnsdist: {}
+  recursor: {}
+
+tolerations:
+  admin: []
+  auth: []
+  dnsdist: []
+  recursor: []
+
+affinity:
+  admin: {}
+  auth: {}
+  dnsdist: {}
+  recursor: {}
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  admin: {}
+  auth: {}
+  dnsdist: {}
+  recursor: {}

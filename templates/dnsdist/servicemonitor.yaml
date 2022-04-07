@@ -1,0 +1,27 @@
+{{- if .Values.powerdns.dnsdist.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "powerdns.fullname" . }}-dnsdist
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: dnsdist-api
+  endpoints:
+  - port: http
+    path: /metrics
+    basicAuth:
+      username:
+        name: {{ include "powerdns.fullname" . }}-dnsdist
+        key: username
+      password:
+        name: {{ include "powerdns.fullname" . }}-dnsdist
+        key: password 
+
+{{- end -}}

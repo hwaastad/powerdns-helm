@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    ignore-check.kube-linter.io/use-namespace: ""
+  name: {{ include "powerdns.fullname" . }}-recursor
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+    module: recursor
+spec:
+  type: {{ .Values.services.recursor.type }}
+  clusterIP: {{ .Values.services.recursor.clusterIP }}
+  ports:
+    - port: {{ .Values.services.recursor.port }}
+      targetPort: dns-tcp
+      protocol: TCP
+      name: dns-tcp
+    - port: {{ .Values.services.recursor.port }}
+      targetPort: dns-udp
+      protocol: UDP
+      name: dns-udp
+    - port: {{ .Values.services.recursor.apiPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "powerdns.selectorLabels" . | nindent 4 }}
+    module: recursor

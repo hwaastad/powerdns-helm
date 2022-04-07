@@ -1,0 +1,19 @@
+{{- if .Values.powerdns.auth.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "powerdns.fullname" . }}-auth
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "powerdns.selectorLabels" . | nindent 6 }}
+      module: auth
+  endpoints:
+  - port: http
+    path: /metrics
+{{- end -}}

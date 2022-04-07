@@ -1,0 +1,28 @@
+{{- if and .Values.powerdns.admin.persistence.enabled .Values.powerdns.admin.enabled -}}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  finalizers:
+  - kubernetes.io/pvc-protection
+  name: {{ include "powerdns.fullname" . }}-admin
+  labels: 
+     {{- include "powerdns.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.powerdns.admin.persistence.hostPath }}
+  storageClassName: ""
+  {{- end }}
+  accessModes:
+  {{- if not (empty .Values.powerdns.admin.persistence.accessModes) }}
+  {{- range .Values.powerdns.admin.persistence.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+    - {{ .Values.powerdns.admin.persistence.accessMode | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.powerdns.admin.persistence.size | quote }}
+  {{- if .Values.powerdns.admin.persistence.storageClass }}
+  storageClassName: "{{ .Values.powerdns.admin.persistence.storageClass }}"
+  {{- end }}
+{{- end -}}

@@ -1,0 +1,27 @@
+api={{ .Values.powerdns.auth.api }}
+api-key={{ .Values.powerdns.auth.apiKey }}
+webserver={{ .Values.powerdns.auth.webserver.enabled }}
+webserver-address={{ .Values.powerdns.auth.webserver.address }}
+webserver-port={{ .Values.powerdns.auth.webserver.port }}
+webserver-allow-from={{ .Values.powerdns.auth.webserver.allowFrom }}
+local-port={{ .Values.powerdns.auth.localPort }}
+local-address={{ .Values.powerdns.auth.localAddress }}:{{ .Values.powerdns.auth.localPort }}
+allow-axfr-ips={{ .Values.powerdns.auth.allowAxfrIps }}
+master={{ .Values.powerdns.auth.master }}
+log-dns-queries={{ .Values.powerdns.auth.log.logDnsQueries }}
+loglevel={{ .Values.powerdns.auth.log.logLevel }}
+allow-unsigned-notify={{ .Values.powerdns.auth.unauthNotify }} 
+dnsupdate: {{ .Values.powerdns.auth.dnsUpdate }}
+{{- if eq .Values.powerdns.backend "mysql" }}
+gmysql-host={{ include "powerdns.databaseHost" . }}
+gmysql-port=3306
+gmysql-user={{ include "powerdns.databaseUser" . }}
+gmysql-dbname=powerdns
+gmysql-password={{ include "powerdns.databasePassword" . }}
+launch=gmysql
+gmysql-dnssec
+{{- else }}
+launch=gsqlite3
+gsqlite3-database=/opt/powerdns/pdns.sqlite3
+gsqlite3-dnssec
+{{- end }}

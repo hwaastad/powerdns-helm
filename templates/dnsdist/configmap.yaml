@@ -1,0 +1,27 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "powerdns.fullname" . }}-dnsdist
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+data:
+  dnsdist.conf: |
+    {{- if .Values.powerdns.dnsdist.control.enabled }}
+    controlSocket('{{ .Values.powerdns.dnsdist.control.listenAddress }}:{{ .Values.powerdns.dnsdist.control.port }}')
+    setConsoleACL('127.0.0.1/32')
+    setKey({{ .Values.powerdns.dnsdist.control.key | quote }})
+    {{- end }}
+    {{- if .Values.powerdns.dnsdist.webserver.enabled }}
+    webserver('{{ .Values.powerdns.dnsdist.webserver.listenAddress }}:{{ .Values.powerdns.dnsdist.webserver.port }}')
+    setWebserverConfig({password={{ .Values.powerdns.dnsdist.webserver.password | quote }}, apiKey={{ .Values.powerdns.dnsdist.apiKey | quote }}, acl={{ .Values.powerdns.dnsdist.webserver.allowFrom | quote }}})
+    {{- end }}
+    addLocal('{{ .Values.powerdns.dnsdist.localAddress }}:{{ .Values.powerdns.dnsdist.localPort }}')
+    setACL({'0.0.0.0/0', '::/0'})
+    newServer({address='{{ .Values.services.auth.clusterIP }}:{{ .Values.services.auth.port }}', pool='auth'})
+    newServer({address='{{ .Values.services.recursor.clusterIP }}:{{ .Values.services.recursor.port }}', pool='recursor'})
+    recursive_ips = newNMG()
+    recursive_ips:addMask('172.16.0.0/12')
+    recursive_ips:addMask('10.0.0.0/8')
+    addAction(OrRule({QTypeRule(DNSQType.AXFR), QTypeRule(DNSQType.IXFR)}), PoolAction('auth'))
+    addAction(NetmaskGroupRule(recursive_ips), PoolAction('recursor'))
+    addAction(AllRule(), PoolAction('auth'))

@@ -1,0 +1,34 @@
+{{- if .Values.powerdns.admin.ingress.enabled -}}
+apiVersion: {{ include "common.capabilities.ingress.apiVersion" . }}
+kind: Ingress
+metadata:
+  name: {{ include "powerdns.fullname" . }}-admin
+  labels:
+    {{- include "powerdns.labels" . | nindent 4 }}
+  {{- with .Values.powerdns.admin.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and .Values.powerdns.admin.ingress.ingressClassName (eq "true" (include "common.ingress.supportsIngressClassname" .)) }}
+  ingressClassName: {{ .Values.powerdns.admin.ingress.ingressClassName | quote }}
+  {{- end }}
+  tls:
+    - hosts:
+      - {{ .Values.powerdns.admin.ingress.hostname }} 
+      secretName: {{ .Values.powerdns.admin.ingress.secretName }}
+  rules:
+    {{- if .Values.powerdns.admin.ingress.path }}
+    - http:
+        paths:
+        - path: {{ .Values.powerdns.admin.ingress.path }}
+          {{- if eq "true" (include "common.ingress.supportsPathType" .) }}
+          pathType: {{ .Values.powerdns.admin.ingress.pathType }}
+          {{- end }}
+          backend: {{- include "common.ingress.backend" (dict "serviceName" (printf "%s-admin" (include "powerdns.fullname" $)) "servicePort" $.Values.services.admin.port "context" $) | nindent 14 }}
+      {{- if .Values.powerdns.admin.ingress.hostname }}
+      host: {{ .Values.powerdns.admin.ingress.hostname }}
+      {{- end }} 
+    {{- end }}
+{{- end }}
+
